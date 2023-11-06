@@ -1,9 +1,7 @@
 import process from 'node:process';
+import findAvailablePort from './findAvailablePort.mjs';
 // Conexion con el servidor - protocolo http
 import http from 'node:http'
-
-// Conexión con el servidor - protocolo tcp (más rápido)
-import net from 'node:net'
 
 // Para probar programa: PORT=1234 node server/server.mjs
 
@@ -27,25 +25,6 @@ server.on('listening', () => {
 })
 
 // ================= TCP PROTOCOL =================
-
-// Funcion para encontrar un puerto disponible
-const findAvailablePort = (port) => {
-    return new Promise((resolve, reject) => {
-        const serverNet = net.createServer();
-        serverNet.listen(port, () => {
-            const { port } = serverNet.address();
-            serverNet.close(() => {
-                resolve(port);
-            });
-        });
-        serverNet.on('error', (error) => {
-            if (error.code === 'EADDRINUSE') {
-                findAvailablePort(0).then((port) => resolve(port));
-            }
-            reject(error);
-        });
-    });
-};
 
 findAvailablePort(process.env.PORT).then((port) => {
     server.listen(port);
