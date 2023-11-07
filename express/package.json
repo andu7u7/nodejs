@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "PORT=3000 nodemon server.mjs",
-    "express": "PORT=3000 node --watch express.mjs"
+    "dev": "PORT=3000 nodemon ./express-basic/server.mjs",
+    "express": "PORT=3000 node --watch ./express-basic/express.mjs",
+    "app":"PORT=3000 node --watch ./app/app.mjs"
   },
   "keywords": [],
   "author": "",
