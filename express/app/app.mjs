@@ -8,6 +8,14 @@ const port = process.env.PORT || 0
 const app = express()
 app.disable('x-powered-by')
 
+// Nota: la biblioteca cors puede ayudar al proceso, leer documentación
+const ALLOW_ORIGIN_ADDRESS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://localhost:8080'
+]
+
 // Middleware para parsear el body de las peticiones
 app.use(express.json())
 
@@ -16,6 +24,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/movies', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin)
   let total = 0
   if (req.query?.genre) {
     // Recuperamos los query params
@@ -68,9 +77,29 @@ app.patch('/movies/:id', (req, res) => {
   res.json(updatedMovie)
 })
 
+app.delete('movies/:id', (req, res) => {
+  const { id } = req.params
+  const movie = movies.find((m) => m.id === id)
+  if (!movie) return res.status(StatusCodes.NOT_FOUND).json({ message: `Movie #${id} not found` })
+  movies.splice(movies.indexOf(movie), 1)
+  res.send()
+})
+
 app.listen(port, () => {
   console.log(`Server started on port ${port}`)
   console.log(`http://localhost:${port}`)
+})
+
+// Función que se llama por solicitudes complejas (PUT, DELETE, PATCH)
+app.options('*', (req, res) => {
+  // Obtenemos el origin de donde se realiza la solicitud
+  const origin = req.headers.origin
+  // Si el origin no existe es porque es el mismo servidor
+  if (!origin || ALLOW_ORIGIN_ADDRESS.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin)
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE')
+  }
+  res.json({})
 })
 
 app.use((req, res, next) => {
