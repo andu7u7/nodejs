@@ -1,6 +1,8 @@
 import express from 'express'
 import crypto from 'node:crypto'
 import movies from './movies.json' assert { type: 'json' };
+import { validateMovie, validatePartialMovie } from './schemas/movie.mjs'
+import { StatusCodes, ReasonPhrases } from 'http-status-codes'
 
 const port = process.env.PORT || 0
 const app = express()
@@ -10,18 +12,21 @@ app.disable('x-powered-by')
 app.use(express.json())
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello World!' })
+  res.status(StatusCodes.OK).json({ statusMessage: ReasonPhrases.OK })
 })
 
 app.get('/movies', (req, res) => {
+  let total = 0
   if (req.query?.genre) {
     // Recuperamos los query params
     const { genre } = req.query
     const filteredMovies = movies.filter((m) => m.genre.some((g) => g.toLowerCase() === genre.toLowerCase()))
-    if (filteredMovies.length) res.json(filteredMovies)
-    else res.json([])
+    total = filteredMovies.length
+    if (total) res.json({ total, statusMessage: ReasonPhrases.OK, movies: filteredMovies })
+    else res.status(StatusCodes.NOT_FOUND).json({ statusMessage: ReasonPhrases.NOT_FOUND, message: `Genre ${genre} not found` })
   }
-  res.json(movies)
+  total = movies.length
+  res.json({ total, statusMessage: ReasonPhrases.OK, movies })
 })
 
 // Nota: por detrás usa regex para saber cuales serán params
@@ -34,20 +39,33 @@ app.get('/movies/:id', (req, res) => {
 })
 
 app.post('/movies', (req, res) => {
+  const movieSchema = validateMovie(req.body)
+  if (!movieSchema.success) {
+    // Nota: debemos parsear el error
+    return res.status(400).json(JSON.parse(movieSchema.error))
+  }
+
   // Al tener el middleware de express.json() podemos acceder a req.body
-  const { title, year, director, duration, poster, genre, rate } = req.body
+  // const { title, year, director, duration, poster, genre, rate } = req.body
   const movie = {
     id: crypto.randomUUID(),
-    title,
-    year,
-    director,
-    duration,
-    poster,
-    genre,
-    rate: rate ?? 0
+    ...movieSchema.data
   }
   movies.push(movie)
   res.status(201).json(movie)
+})
+
+app.patch('/movies/:id', (req, res) => {
+  const result = validatePartialMovie(req.body)
+  if (!result.success) {
+    return res.status(StatusCodes.BAD_REQUEST).json(JSON.parse(result.error))
+  }
+  const { id } = req.params
+  const movie = movies.find((m) => m.id === id)
+  if (!movie) return res.status(StatusCodes.NOT_FOUND).json({ message: `Movie #${id} not found` })
+  const updatedMovie = { ...movie, ...result.data }
+  movies.splice(movies.indexOf(movie), 1, updatedMovie)
+  res.json(updatedMovie)
 })
 
 app.listen(port, () => {
